@@ -15,11 +15,11 @@ const saltRounds = 10;
 env.config();
 //Database
 const db = new pg.Client({
-    user: "postgres",
-    host: "localhost",
-    database: "books",
-    password: "alishia5*now",
-    port:5432
+    user: process.env.PG_USER,
+    host: process.env.PG_HOST,
+    database: process.env.PG_DATABASE,
+    password: process.env.PG_PASSWORD,
+    port: process.env.PG_PORT
   });
   db.connect();
 
@@ -28,7 +28,7 @@ const db = new pg.Client({
 
   app.use(
     session({
-      secret: "TOPSECRETWORD",
+      secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: true,
       cookie : {
