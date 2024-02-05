@@ -1,0 +1,18 @@
+<%- include('partials/header.ejs'); -%>
+<div>
+    <div>
+        <%if(locals.message){%>
+            <h3><%=message%></h3>
+        <%}%>
+        
+    </div>
+    <form action="/uservalidate" method="post">
+        
+        <label for="username">Email</label>
+        <input type="text" name="username" id="">
+        <label for="passowrd">Password</label>
+        <input type="password" name = "password">
+        <input type="submit" name="submit" id="" value = "Submit">
+    </form>
+</div>
+<%- include('partials/footer.ejs'); -%>

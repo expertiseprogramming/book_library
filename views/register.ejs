@@ -1,0 +1,17 @@
+<%- include('partials/header.ejs'); -%>
+<div>
+    <div>
+        <%if(locals.error_message){%>
+            <h3><%=error_message%></h3>
+        <%}%>
+        
+    </div>
+    <form action="/newuser" method="post">
+        <label for="username">Email</label>
+        <input type="text" value="Type Username" name="username">
+        <label for="passowrd">passowrd</label>
+        <input type="password" name="password">
+        <button type="submit" name="submit">Register</button>
+    </form>
+</div>
+<%- include('partials/footer.ejs'); -%>

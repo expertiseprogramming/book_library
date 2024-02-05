@@ -1,0 +1,48 @@
+<%- include('partials/header.ejs'); -%>
+<%if(locals.error_message){%>
+    <%= error_message%>
+<%}%>
+
+
+
+ <%if(locals.username){%>
+    <div>
+        
+            <h1><%=username%></h1>
+        
+       
+    </div>
+
+    <%books.forEach(book => {%>
+        
+    
+        <div>
+            <h2>
+                <p><%=book.title%></p>
+            </h2>
+        </div>
+        <div>
+            <p>
+                <%=book.description%>
+            </p>
+        </div>
+        <div>
+            <p>
+                <%=book.review%>
+            </p>
+        </div>
+        <div>
+            <p>
+                <%=book.rating%>
+            </p>
+        </div>
+        <div>
+            <%console.log(book.img_url)%>
+            <img src="<%=book.img_url%>"  alt="" name="img">
+        </div>
+        <div>
+
+        </div>
+    <%});%>
+<%}%> 
+<%- include('partials/footer.ejs'); -%>
