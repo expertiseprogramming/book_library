@@ -1,10 +1,13 @@
 <%- include('partials/header.ejs'); -%>
+
 <div>
+    <div>
+        <h1>Login </h1>
+    </div>
     <div>
         <%if(locals.message){%>
             <h3><%=message%></h3>
         <%}%>
-        
     </div>
     <form action="/uservalidate" method="post">
         
@@ -14,5 +17,16 @@
         <input type="password" name = "password">
         <input type="submit" name="submit" id="" value = "Submit">
     </form>
+
+    <div class="col-sm-4">
+        <div class="card">
+          <div class="card-body">
+            <a class="btn btn-block" href="/auth/google" role="button">
+              <i class="fab fa-google"></i>
+              Sign In with Google
+            </a>
+          </div>
+        </div>
+      </div>
 </div>
 <%- include('partials/footer.ejs'); -%>

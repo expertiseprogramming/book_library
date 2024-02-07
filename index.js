@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import passport from "passport";
 import { Strategy } from "passport-local";
+import GoogleStrategy from "passport-google-oauth2";
 import env from "dotenv";
 
 const app = express();
@@ -13,6 +14,7 @@ const port = 3000;
 
 const saltRounds = 10;
 env.config();
+
 //Database
 const db = new pg.Client({
     user: process.env.PG_USER,
@@ -58,9 +60,11 @@ const db = new pg.Client({
   
   //To login
   app.get("/login", (req, res) => {
+    //console.log(req.user)
     res.render("login.ejs")
   })
 
+  //To Logout 
   app.get("/logout", (req, res, next) => {
     req.logout(function (err) {
       if (err) {
@@ -70,9 +74,9 @@ const db = new pg.Client({
     });
   });
 
-
   //Directly call and display book details if there is a session
   app.get("/books",async (req, res) => {
+    console.log(req.user)
     if(req.isAuthenticated()){
       const final_details = await display_books(req.user.user_id);
       res.render("books.ejs",{
@@ -85,14 +89,58 @@ const db = new pg.Client({
         error_message: "Please login to see the book details"
       });
     }
-    
   })
+
+  app.get("/new", (req, res) => {
+    if(req.user.user_id > 0){
+      res.render("index.ejs")
+    } else{
+      res.render("books.ejs", {
+        error_message : "Please login to add book details"
+      })
+    } 
+  })
+
+  //Google authentication
+  app.get("/auth/google",
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+    })
+  );
+
+  //Google redirect
+  app.get("/auth/google/books", passport.authenticate("google",{
+    successRedirect: "/books",
+    failureRedirect: "/login"
+  }));
+
+
+
+  //To display book cover image
+  let book_cover = async (book_details)  => {
+    let final_details = [];
+    for (const book of book_details) {
+        const result = await axios.get(`https://covers.openlibrary.org/b/isbn/${book.bookid}-L.jpg`);
+        const img_url = result.config.url;
+        book.img_url = img_url;
+        final_details.push(book);
+    };
+    return final_details;
+  }
 
   //Login validation and display books
   app.post("/uservalidate", passport.authenticate("local",{
     successRedirect: "/books",
     failureRedirect: "/login"
   }));
+
+  //To get book details from database
+  let display_books = async (user_id) => {
+    const result = await db.query("select * from book join review on book.bookid = review.bookid and book.user_id = $1 order by book.bookid",[user_id]);
+    const book_details = result.rows;
+    const final_details = await book_cover(book_details);
+    return final_details;
+  }
 
   //inserting new user details to database
   app.post("/newuser", async (req, res) => {
@@ -130,35 +178,9 @@ const db = new pg.Client({
     }
   })
 
-  let book_cover = async (book_details)  => {
-    let final_details = [];
-    for (const book of book_details) {
-        const result = await axios.get(`https://covers.openlibrary.org/b/isbn/${book.bookid}-L.jpg`);
-        const img_url = result.config.url;
-        book.img_url = img_url;
-        final_details.push(book);
-    };
-    return final_details;
-  }
-
-  let display_books = async (user_id) => {
-    const result = await db.query("select * from book join review on book.bookid = review.bookid and book.user_id = $1 order by book.bookid",[user_id]);
-    const book_details = result.rows;
-    const final_details = await book_cover(book_details);
-    return final_details;
-  }
-
-  app.get("/new", (req, res) => {
-    if(user_id > 0){
-      res.render("index.ejs")
-    } else{
-      res.render("books.ejs", {
-        error_message : "Please login to add book details"
-      })
-    } 
-  })
-
+  //Insert book details into database and displays all books of that user
   app.post("/add", async(req,res) => {
+    const user_id = req.user.user_id;
     const bookid = req.body.bookid;
     const title = req.body.title;
     const description = req.body.description;
@@ -172,40 +194,68 @@ const db = new pg.Client({
         const final_details = await display_books(user_id);
         res.render("books.ejs", {
             books : final_details,
-            username : userDisplayName
-        });
-        
+            username : req.user.username
+        });  
     } catch (error) {
         console.log("Error in updating database"+error)
         res.render("index.ejs", {
             error_message : "Something went wrong!! Please try again!!"
         })
     }
-    
   })
 
   //This stategy is verifying to authenticate user login
-  passport.use(new Strategy(async function verify(username, password, cb){
+  passport.use("local", new Strategy(async function verify(username, password, cb){
     try {
       const data = await db.query("SELECT * FROM users where username = $1", [username]);
-      let user = data.rows[0];
-      let hashed_password = data.rows[0].password;
-      //authenticating user entered password vs encrypted db password
-      bcrypt.compare(password, hashed_password, async (err, result) => {
-        if(err){
-          return cb(err)
-        }
-        else {
-          if(result){
-            return cb(null, user)
+      if(data.rows[0].length !== 0){
+        let user = data.rows[0];
+        let hashed_password = data.rows[0].password;
+        //authenticating user entered password vs encrypted db password
+        bcrypt.compare(password, hashed_password, async (err, result) => {
+          if(err){
+            return cb(err)
           }
-          else{
-            return cb(null, false)
+          else {
+            if(result){
+              return cb(null, user)
+            }
+            else{
+              return cb(null, false)
+            }
           }
-        }
-      })
-    } catch (error) {
-      return cb("Invalid username")
+        })
+      }
+      else{
+        return cb(null, false)
+      }
+    } catch (error) { 
+        return cb(null, false)
+    }
+  }))
+
+  //Google stategy to verify a user
+  passport.use("google", new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/books",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  }, 
+  async(accessToken, refreshToken, profile, cb) => {
+    try {
+      const result = await db.query("SELECT * FROM users WHERE username = $1", [profile.email]);
+      if (result.rows[0].length === 0) {
+        const newUser = await db.query(
+          "INSERT INTO users (username, password) VALUES ($1, $2) returning *",
+          [profile.email, "google"]
+        );
+        return cb(null, newUser.rows[0])
+      } else {
+        return cb(null, result.rows[0]);
+      }
+    } catch (err) {
+      console.log("inside catcj")
+      return cb(null, false);
     }
   }))
 

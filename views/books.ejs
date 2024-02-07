@@ -3,19 +3,12 @@
     <%= error_message%>
 <%}%>
 
-
-
- <%if(locals.username){%>
+ <%if(locals.username || locals.email){%>
     <div>
-        
-            <h1><%=username%></h1>
-        
-       
+        <h1><%=username%></h1>
     </div>
 
     <%books.forEach(book => {%>
-        
-    
         <div>
             <h2>
                 <p><%=book.title%></p>
@@ -37,11 +30,7 @@
             </p>
         </div>
         <div>
-            <%console.log(book.img_url)%>
             <img src="<%=book.img_url%>"  alt="" name="img">
-        </div>
-        <div>
-
         </div>
     <%});%>
 <%}%> 
